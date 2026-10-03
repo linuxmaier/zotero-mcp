@@ -457,3 +457,21 @@ def test_export_bibliography_library_wide_uses_top_level_items(monkeypatch):
     synthesis.export_bibliography(ctx=DummyContext())
 
     assert local.last_kwargs.get("include") == "bib"
+
+
+def test_export_bibliography_decodes_html_entities(monkeypatch):
+    # Zotero's CSL output escapes punctuation (found against a real library:
+    # "O&#x2019;Donnell", "&amp;"), which would paste literally as plain text.
+    class _EntityBibZotero(_BibZotero):
+        def _render(self, kwargs):
+            return [{
+                "key": "ABCD1234",
+                "bib": '<div class="csl-entry">O&#x2019;Donnell, N., &amp; Smith, J. (2020). 1&#x2013;9.</div>',
+            }]
+
+    monkeypatch.setattr(zotero_client, "get_zotero_client", lambda: _EntityBibZotero())
+
+    out = synthesis.export_bibliography(item_keys=["ABCD1234"], ctx=DummyContext())
+
+    assert "O’Donnell, N., & Smith, J. (2020). 1–9." in out
+    assert "&amp;" not in out and "&#x" not in out

@@ -6,6 +6,7 @@ drop formatted references into a manuscript. They do NOT call an LLM
 themselves; they only collect and format.
 """
 
+import html
 import json
 from collections import Counter
 from typing import Literal
@@ -464,7 +465,9 @@ def export_bibliography(
         header = f"# {format_label} ({style})"
         lines = [header, ""]
         for i, entry in enumerate(entries, 1):
-            clean = _utils.clean_html(entry).strip()
+            # CSL output is HTML: strip the tags, then decode entities such as
+            # &amp; and &#x2019; so the entry pastes cleanly as plain text.
+            clean = html.unescape(_utils.clean_html(entry)).strip()
             if not clean:
                 continue
             lines.append(f"{i}. {clean}")
