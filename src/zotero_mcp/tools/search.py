@@ -250,6 +250,54 @@ class GlobalSearchUnsupported(Exception):
     """
 
 
+def _add_fulltext_parents(zot, backend, items: list, query: str, limit: int,
+                          collection_keys: list[str] | None = None) -> list:
+    """Append the parent items of attachments whose full text matches ``query``.
+
+    Over the Web API, a full-text match is reported on the attachment that
+    holds the text (the PDF), not on its parent item. The default
+    ``itemType=-attachment`` filter drops those attachments on Zotero's side,
+    so a paper that mentions the query only in its body never appears. Zotero
+    desktop shows the parent for such a match; this does the same. Metadata
+    matches keep their places at the front, and the cap still applies.
+    """
+    if len(items) >= limit:
+        return items
+    seen = {item.get("key") for item in items}
+    try:
+        attachments = _utils._paginate(
+            zot.items, max_items=limit * 3,
+            q=query, qmode="everything", itemType="attachment",
+        ) or []
+    except Exception as e:
+        _search_logger.debug(f"full-text attachment search failed: {e}")
+        return items
+
+    parent_keys: list[str] = []
+    for attachment in attachments:
+        parent = attachment.get("data", {}).get("parentItem")
+        if parent and parent not in seen and parent not in parent_keys:
+            parent_keys.append(parent)
+    if not parent_keys:
+        return items
+
+    parents = backend.get_items(parent_keys)
+    wanted = set(collection_keys or [])
+    for key in parent_keys:
+        parent = parents.get(key)
+        if not parent:
+            continue
+        data = parent.get("data", {})
+        if data.get("deleted"):
+            continue
+        if wanted and not wanted & set(data.get("collections", [])):
+            continue
+        items.append(parent)
+        if len(items) >= limit:
+            break
+    return items
+
+
 def _search_items_via_backend(zot, query: str, qmode: str, limit: int,
                               item_type: str = "-attachment",
                               tag: list[str] | None = None,
@@ -537,6 +585,23 @@ def search_items(
                         ctx.info(f"Semantic search fallback failed: {e}")
 
             _search_logger.debug(f"[CASCADE] total: {_time.monotonic() - _cascade_start:.2f}s, fallback={fallback_strategy}")
+
+        # Full-text matches arrive as attachments, which the default filter
+        # drops; bring in their parent items. Web API only: the SQLite backend
+        # and global search have their own scoping. Skipped with a tag filter,
+        # which a parent found this way hasn't been checked against.
+        if (
+            (qmode == "everything" or fallback_strategy == "full-text search")
+            and item_type == "-attachment"
+            and not tag
+            and not search_all_libraries
+            and not _utils.is_local_mode()
+            and fallback_strategy != "semantic search"
+        ):
+            scope = None
+            if collection_key:
+                scope = _helpers.expand_collection_scope(zot, collection_key, include_subcollections)
+            items = _add_fulltext_parents(zot, backend, list(items), query, limit, scope)
 
         # --- No results after all strategies ---
         if not items:

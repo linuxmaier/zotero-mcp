@@ -394,13 +394,18 @@ class ApiBackend:
         return None
 
     def recent_items(self, *, limit: int = 10, collection_key: str | None = None) -> list[dict]:
+        # No attachments, close to the SQLite backend's top-level items:
+        # otherwise each new paper's PDF and snapshot crowd it out as separate
+        # "recent" items. (The Web API rejects combining several negated
+        # itemType filters, so child notes can still appear.)
         if collection_key:
             return _utils._paginate(
-                self._zot.collection_items, collection_key,
+                self._zot.collection_items, collection_key, itemType="-attachment",
                 sort="dateAdded", direction="desc", max_items=limit,
             )[:limit]
         return _utils._paginate(
-            self._zot.items, sort="dateAdded", direction="desc", max_items=limit
+            self._zot.items, itemType="-attachment",
+            sort="dateAdded", direction="desc", max_items=limit,
         )[:limit]
 
     def top_items(self, *, limit: int = 100) -> list[dict]:
