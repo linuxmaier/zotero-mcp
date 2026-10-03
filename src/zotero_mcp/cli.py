@@ -1377,6 +1377,12 @@ def main():
         from zotero_mcp.server import mcp
         # Get transport with a default value if not specified
         transport = getattr(args, "transport", "stdio")
+        # Hosted mode is configured by environment alone; check it before
+        # setup_zotero_environment() falls back to local-mode defaults.
+        from zotero_mcp.hosted import HOSTED_ENV_VAR, hosted_config_errors
+        if errors := hosted_config_errors():
+            print(f"❌ {HOSTED_ENV_VAR} is on, but: " + "; ".join(errors))
+            sys.exit(1)
         # Ensure environment is initialized (Claude config or standalone config)
         setup_zotero_environment()
         # Re-apply the toolset profile now that the transport is known. The
