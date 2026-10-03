@@ -36,6 +36,7 @@ from zotero_mcp.utils import (
     is_local_mode,
     item_display_date,
     item_display_title,
+    web_library_url,
 )
 from zotero_mcp.webdav import (
     WebDAVNotConfiguredError,
@@ -760,6 +761,8 @@ def format_item_metadata(item: dict[str, Any], include_abstract: bool = True) ->
         f"**Type:** {item_type}",
         f"**Item Key:** {data.get('key')}",
     ]
+    if url := web_library_url(item):
+        lines.append(f"**Zotero link:** {url}")
 
     # Trash status. The Zotero web API returns data.deleted=1 for items in
     # the Trash; prior versions silently rendered trashed items as if live,

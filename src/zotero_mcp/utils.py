@@ -405,6 +405,19 @@ def item_display_date(data: dict) -> str:
     return str(data.get("date") or "")
 
 
+def web_library_url(item: dict) -> str | None:
+    """The item's page in the zotero.org web library, as the Web API reports it.
+
+    Read from ``links.alternate``, which the Web API returns on every item and
+    attachment. Items from the SQLite backend or the local API have no usable
+    web link, so this returns None for them.
+    """
+    href = ((item.get("links") or {}).get("alternate") or {}).get("href") or ""
+    if href.startswith("https://www.zotero.org/") and "/local/" not in href:
+        return href
+    return None
+
+
 def library_label(item: dict) -> str | None:
     """Human-readable source library for one item, or None if unattributed.
 
@@ -461,6 +474,9 @@ def format_item_result(
         f"**Date:** {item_display_date(data) or 'No date'}",
         f"**Authors:** {format_creators(data.get('creators', []))}",
     ]
+
+    if url := web_library_url(item):
+        lines.append(f"**Zotero link:** {url}")
 
     if show_library and (label := library_label(item)):
         lines.insert(3, f"**Library:** {label}")

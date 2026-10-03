@@ -139,6 +139,7 @@ from zotero_mcp.tools.write import (  # noqa: F401
     update_item,
 )
 
+from zotero_mcp.hosted import register_health_route
 from zotero_mcp.toolsets import apply_toolsets
 from zotero_mcp.utils import (  # noqa: F401
     clean_html,
@@ -154,3 +155,5 @@ from zotero_mcp.utils import (  # noqa: F401
 # Callers that import `mcp` directly still get the configured profile rather
 # than the full surface.
 apply_toolsets(mcp)
+
+register_health_route(mcp)

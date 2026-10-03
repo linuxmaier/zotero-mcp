@@ -6,8 +6,10 @@ context window. The full surface costs roughly 23k tokens; a reading or
 literature-review session typically touches a small fraction of it.
 
 This module carves the optional groups out of that surface. Anything not
-named here is **core** and always available, so merging or renaming a core
-tool never requires touching this file. Only the opt-in groups are
+named here is **core** and available unless read-only or hosted mode hides
+it (:mod:`zotero_mcp.hosted`, which also classifies every tool as read or
+write). Merging or renaming a core tool never requires touching this file,
+though it does require classifying it in ``hosted.py``. Only the opt-in groups are
 enumerated, and :func:`validate_toolsets` (exercised by the test suite)
 fails loudly if a name here ever drifts from the real tool registry —
 FastMCP silently ignores unknown names, so drift is otherwise invisible.
@@ -227,10 +229,21 @@ def apply_toolsets(
     """
     enabled = resolve_enabled(raw, transport=transport)
 
+    from zotero_mcp.hosted import READ_TOOLS, WRITE_TOOLS, hidden_tool_names
+
     on: set[str] = set()
     off: set[str] = set()
     for name, tools in TOOLSETS.items():
         (on if name in enabled else off).update(tools)
+
+    # Core tools are on unless read-only or hosted mode hides them (see
+    # hosted.py). Hidden tools stay off whichever toolset lists them, and
+    # passing the core set explicitly keeps a later call able to undo an
+    # earlier one's hiding.
+    hidden = hidden_tool_names()
+    on |= (READ_TOOLS | WRITE_TOOLS) - optional_tool_names()
+    off |= hidden
+    on -= hidden
 
     # Disable first so a tool appearing in two groups stays on if any of its
     # groups is enabled.

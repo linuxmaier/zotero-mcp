@@ -45,6 +45,5 @@ Thumbs.db
 # Lock files
 uv.lock
 
-# Local project docs
-CLAUDE.md
+# Local project docs (this fork tracks CLAUDE.md as a symlink to AGENTS.md)
 .claude/
