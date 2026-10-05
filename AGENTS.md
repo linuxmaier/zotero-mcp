@@ -8,9 +8,10 @@ The user's goal: while working on something, find related papers in their librar
 
 ## Branches and deploys
 
-- **`production` is what deploys automatically.** A push to `production` builds the hosted image and publishes it to GHCR (`ghcr.io/linuxmaier/zotero-mcp-hosted`, tagged with the commit SHA and `production`); the home-server platform deploys it from there. Promote by merging `main` into `production`, only after tests pass on `main`.
+- **`production` is what deploys automatically.** A push to `production` builds the hosted image and publishes it to GHCR (`ghcr.io/linuxmaier/zotero-mcp-hosted`, tagged with the commit SHA and `production`). The workflow's `release` job then pins the new digest in home-server with a PR it merges once home-server's CI passes, which deploys it within a few minutes (home-server ADR 0013). Promote by merging `main` into `production`, only after tests pass on `main`.
 - **`main`** is the integration branch: feature branches merge here through PRs, and so do upstream merges. Pushes to `main` build the image but don't publish it.
 - Never push to `production` without the operator asking.
+- The `release` job in `.github/workflows/hosted-image.yml` uses the `home-server-release` GitHub App's key, which can push to and merge in linuxmaier/home-server. The key is a secret of the `home-server-release` environment, which only `production` may use. Never reference it from another job or environment, and keep that workflow's actions pinned to commit SHAs.
 
 ## Scope
 
